@@ -4,10 +4,24 @@ import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 from dataset import ColorDataset
 from model import NeuralNet
+from skimage import color
+import numpy as np
 
 # Konfiguracja
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-MODEL_PATH = 'color_predictor.pth'
+MODEL_PATH = 'color_predictor_lab.pth'
+
+
+def lab_to_rgb(pred_lab):
+    # Denormalizacja
+    L = pred_lab[0] * 100.0
+    a = pred_lab[1] * 128.0
+    b = pred_lab[2] * 128.0
+    
+    # Konwersja do RGB
+    lab_array = np.array([[L, a, b]], dtype=np.float64)
+    rgb = color.lab2rgb(lab_array) * 255
+    return rgb.astype(np.uint8)
 
 def plot_predictions(model, dataset, num_samples=5):
     model.eval()
@@ -54,13 +68,19 @@ def main():
         transforms.Resize((224, 224)),
         transforms.ToTensor()
     ])
-    
+    """
+    dataset = ColorDataset(
+        images_dir='C:/Users/agnel/Desktop/aaaa',
+        labels_dir='C:/Users/agnel/Desktop/aaaa',
+        transform=transform
+    )
+    """
     dataset = ColorDataset(
         images_dir='C:/Users/agnel/Desktop/BIAI dataset/photos/PhotosColorPicker',
         labels_dir='C:/Users/agnel/Desktop/BIAI dataset/user data/klasyfikacja/',
         transform=transform
     )
-    
+
     # Wyświetl predykcje
     plot_predictions(model, dataset)
 

@@ -1,14 +1,14 @@
 import torch
 from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
-from dataset import ColorDataset
-from model import NeuralNet
+from dataset2color import ColorDataset
+from model2color import NeuralNet
 
 # Konfiguracja
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 BATCH_SIZE = 32
-EPOCHS = 30
-MODEL_PATH = 'color_predictor_lab.pth'
+EPOCHS = 60
+MODEL_PATH = 'color_predictor_lab_two_colors.pth'
 
 def main():
     # Dataset i DataLoader
@@ -18,8 +18,9 @@ def main():
     transform = transforms.Compose([
         transforms.Resize((224, 224)),
         transforms.RandomHorizontalFlip(),
-        transforms.ToTensor()
-    ])
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        ])
     
     dataset = ColorDataset(
         images_dir='C:/Users/agnel/Desktop/BIAI dataset/photos/PhotosColorPicker',
@@ -40,17 +41,34 @@ def main():
         model.train()
         running_loss = 0.0
         
-        for inputs, colors in dataloader:
-            inputs, colors = inputs.to(device), colors.to(device)
+        for inputs, targets in dataloader:  # Tylko dwa elementy!
+            inputs = inputs.to(device)
+            targets = targets.to(device)
+
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
             
             optimizer.zero_grad()
-            outputs = model(inputs)
-            loss = criterion(outputs, colors)
-            loss.backward()
+            outputs = model(inputs)  # Kształt: (batch_size, 6)
+            
+            # Podział wyjść na dwa kolory
+            color_primary_pred = outputs[:, :3]
+            color_secondary_pred = outputs[:, 3:]
+            
+            # Podział celów na dwa kolory
+            color_primary_true = targets[:, :3]
+            color_secondary_true = targets[:, 3:]
+            
+            # Oblicz stratę dla obu kolorów
+            loss_primary = criterion(color_primary_pred, color_primary_true)
+            loss_secondary = criterion(color_secondary_pred, color_secondary_true)
+            total_loss = loss_primary + loss_secondary
+            
+            total_loss.backward()
             optimizer.step()
             
-            running_loss += loss.item()
-        
+            running_loss += total_loss.item()
+    
         print(f'Epoch {epoch}, Loss: {running_loss/len(dataloader):.4f}')
 
     # Zapis modelu

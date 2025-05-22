@@ -28,7 +28,7 @@ class NeuralNet(nn.Module):
             nn.Linear(256, 128),
             nn.LeakyReLU(0.01),
             nn.Dropout(0.3),
-            nn.Linear(128, 3),
+            nn.Linear(128, 6),
             nn.Sigmoid()  # Wszystkie outputy w [0, 1]
         )
 
